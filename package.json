@@ -1,0 +1,24 @@
+{
+  "name": "class-plataform-server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node api/index.js"
+  },
+  "type": "commonjs",
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "jimp": "^1.6.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.1",
+    "nodemon": "^3.1.10",
+    "npx": "^10.2.2",
+    "password-hash": "^1.2.2"
+  }
+}
