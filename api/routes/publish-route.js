@@ -3,27 +3,121 @@ const jsonwebtoken = require('jsonwebtoken')
 const {supabase} = require('../config/database.js')
 const {upload} = require('../../middlewares/multer.js')
 const {Jimp}  = require('jimp')
+const { readToken } = require('../../functions/token.js')
 
 const publish_router = express.Router()
 
-publish_router.get("/publish/get/all",async(req,res)=>{
-    const auth_token = req.cookies['auth_token'];
+publish_router.get("/publish/get/group",async(req,res)=>{
+    const user_auth = readToken(req.cookies['auth_token'])
     try {
-        if(!auth_token){
+        if(!user_auth){
             return res.status(401).send({message:"Usuário não autenticado",status:401})
         }
+        const {type,username,limit} = req.query
+        let post_data = null;
+        let like_data = null;
+        let post_count = null;
+        console.log("limite:",limit)
+        switch (type) {
+            case "all":
+                post_count = await supabase.from('vw_table_post')
+                .select("username",{
+                    count:'exact'
+                })
+                post_data = await supabase.from("vw_table_post")
+                .select(`
+                    user_small_photo,
+                    username,
+                    creation_date_interval,
+                    creation_date,
+                    description,
+                    like_qnt,
+                    commentary_qnt,
+                    post_id
+                    `)
+                    .limit(limit);
+                like_data = await supabase.from("tb_post_like")
+                .select("fk_id_post")
+                .eq("fk_id_user",user_auth.id)
+                .limit(limit);
+                break;
+            case "especific":
+                post_count = await supabase.from('vw_table_post')
+                .select("username",{
+                    count:'exact'
+                })
+                .eq("username",username)
 
-        const post_data = await supabase
-        .from("tb_post")
-        .select("*");
+                post_data = await supabase.from("vw_table_post")
+                .select(`
+                    user_small_photo,
+                    username,
+                    creation_date_interval,
+                    creation_date,
+                    description,
+                    like_qnt,
+                    commentary_qnt,
+                    post_id
+                    `)
+                .eq("username",username)
+                .limit(limit);
 
-        res.status(200).send({message:"Postagens listadas",status:200,data})
+                like_data = await supabase.from("tb_post_like")
+                .select("fk_id_post")
+                .eq("fk_id_user",user_auth.id)
+                .limit(limit);
+                break;
+            default:
+                break;
+        }
+
+
+        !post_data.error
+        &&
+        !like_data.error
+        &&
+        !post_count.error
+        ? (()=>{
+            return res.status(200).send({message:"Postagens listados com sucesso",status:200,
+        data:{
+            post_list:post_data.data,
+            liked_posts:like_data.data.map((id)=>id.fk_id_post),
+            post_list_count_remaining:(post_count.count-limit)
+        }})
+        })()
+        : 
+        post_data.error
+        ? res.status(500).send({message:post_data.error,status:500})
+        :
+        post_count.error
+        ? res.status(500).send({message:post_count.error,status:500})
+        : 
+        like_data.error
+        &&
+        res.status(500).send({message:like_data.error,status:500})
+        
+        
 
     } catch (error) {
         console.log(error)
         res.status(500).send({message:error,status:500})
     }
 
+})
+
+publish_router.get("/publish/get/single",async(req,res)=>{
+    const user_auth = readToken(req.cookies['auth_token'])
+    try {
+        if(!user_auth){
+            return res.status(401).send({message:"Usuário não autenticado",status:401})
+        } 
+
+
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:error,status:500})
+    }
 })
 
 publish_router.post("/publish/post",upload.single('image'),async(req,res)=>{
@@ -65,6 +159,77 @@ publish_router.post("/publish/post",upload.single('image'),async(req,res)=>{
         res.status(500).send({message:error,status:500})
     }
 
+})
+
+publish_router.post("/publish/put/actions",async (req,res)=>{
+    const user_auth = readToken(req.cookies['auth_token'])
+    try {
+        if(!user_auth){
+            return res.status(401).send({message:"Usuário não autenticado",status:401})
+        } 
+        const {type,post_id} = req.query
+        let post_action_data = null;
+        let post_action_verify = null;
+        let current_post_data = null;
+        let post_change_data = null;
+
+        current_post_data = await supabase.from("tb_post")
+        .select("like_qnt,commentary_qnt")
+        .eq("id",post_id);
+
+        !!current_post_data.data
+        &&
+        (async()=>{
+            switch (type) {
+            case 'like':
+
+                post_action_verify = await supabase.from("tb_post_like")
+                .select("id")
+                .eq("fk_id_user",user_auth.id)
+                .eq("fk_id_post",post_id)
+
+                !post_action_verify.data.length
+                ? (async()=>{
+
+                    post_action_data = await supabase.from('tb_post_like')
+                    .insert({
+                        fk_id_user:user_auth.id,
+                        fk_id_post:post_id
+                    });
+                    post_change_data = await supabase.from("tb_post")
+                    .update({
+                        like_qnt:current_post_data.data[0].like_qnt+=1
+                    })  
+
+                })()
+                : (async()=>{
+
+                    post_action_data = await supabase.from("tb_post_like")
+                    .delete()
+                    .eq("id",post_action_verify.data[0].id)
+
+                    post_change_data = await supabase.from("tb_post")
+                    .update({
+                        like_qnt:current_post_data.data[0].like_qnt-=1
+                    })  
+                })()
+                
+
+                break;
+            case 'commentary':
+
+                break;
+            default:
+                break;
+            }
+        })()
+
+
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:error,status:500})
+    }
 })
 
 module.exports = {publish_router}

@@ -18,7 +18,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.1",
     "nodemon": "^3.1.10",
-    "npx": "^10.2.2",
+    "npx": "^3.0.0",
     "password-hash": "^1.2.2"
   }
 }
