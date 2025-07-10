@@ -4,6 +4,7 @@ const {user_router}  = require("./routes/user-route.js")
 const cookieParser = require('cookie-parser')
 const {auth_router} = require('./routes/auth-route.js')
 const {publish_router} = require('./routes/publish-route.js')
+const {like_router} = require('./routes/like-route.js')
 
 const server = express();
 
@@ -16,6 +17,7 @@ server.use(cookieParser())
 server.use(user_router)
 server.use(auth_router)
 server.use(publish_router)
+server.use(like_router)
 
 server.get("/",(req,res)=>{
 
