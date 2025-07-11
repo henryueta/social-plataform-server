@@ -129,43 +129,13 @@ publish_router.get("/publish/get/single",async(req,res)=>{
         .eq("fk_id_user",user_auth.id)
         .eq('fk_id_post',id);
 
-        const commentary_data = await supabase.from("vw_table_commentary")
-        .select(`
-        commentary_id,
-        username,
-        user_small_photo,
-        description,
-        like_qnt,
-        creation_date_interval
-        `)
-        .eq("post_id",id)
-        
-        let commentary_like_data = null
-
-        commentary_like_data = 
-        !commentary_data.error
-        &&
-        (async()=>{
-            return await supabase.from("tb_commentary_like")
-        .select("fk_id_commentary")
-        .in('fk_id_commentary',commentary_data.data)
-        .eq("fk_id_user",user_auth.id)
-        })()
-        
-
         !post_data.error
         &&
         !post_like_data.error
-        &&
-        !commentary_data.error
-        &&
-        !(await commentary_like_data.error)
         ?
         res.status(200).send({message:"Postagem listado com sucesso",status:200,data:{
             post:post_data.data[0],
             liked_post:!!post_like_data.data.length,
-            commentary_list:commentary_data.data,
-            liked_commentary_list:await commentary_like_data.data
         }})
         :
         res.status(500).send({message:"Erro interno no Servidor",status:500})
