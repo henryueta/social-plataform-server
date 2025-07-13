@@ -3,6 +3,7 @@ const jsonwebtoken = require('jsonwebtoken')
 const {supabase} = require('../config/database.js')
 const { readToken } = require('../../functions/token.js')
 const {upload} = require('../../middlewares/multer.js')
+const { onQueryDataList } = require('../../functions/listLimit.js')
 
 
 const commentary_router = express.Router()
@@ -107,82 +108,147 @@ commentary_router.get("/commentary/get",async(req,res)=>{
         if(!user_auth){
             return res.status(401).send({message:"Usuário não autenticado",status:401})
         } 
-        const {type,table_id,limit} = req.query
+        const {type,table_id,limit,page} = req.query
+
+        const limit_number = parseInt(limit)
+        const page_number = parseInt(page)
 
         let commentary_data = null;
         let commentary_like_data = null;
         let commentary_count = null
 
-        commentary_count = supabase.from('vw_table_post_commentary')
-        .select("username",{
-            count:'exact'
-        })
-        .eq(type === 'post'
-        ? 'post_id'
-        : 'for_respond_id',
-        table_id)
+        // commentary_count = supabase.from('vw_table_post_commentary')
+        // .select("username",{
+        //     count:'exact'
+        // })
+        // .eq(type === 'post'
+        // ? 'post_id'
+        // : 'for_respond_id',
+        // table_id)
         
-        if (type === 'post') {
-        commentary_count = commentary_count.is('thread_id', null);
-        } else {
-        commentary_count = commentary_count.not('thread_id', 'is', null);
-        }
+        // if (type === 'post') {
+        // commentary_count = commentary_count.is('thread_id', null);
+        // } else {
+        // commentary_count = commentary_count.not('thread_id', 'is', null);
+        // }
 
-        commentary_data = supabase.from("vw_table_post_commentary")
-        .select(`
-        commentary_id,
-        post_id,
-        thread_id,
-        for_respond_id,
-        username,
-        user_small_photo,
-        description,
-        like_qnt,
-        response_quantity,
-        creation_date_interval
-        `)
-        .eq(type === 'post'
-        ? 'post_id'
-        : 'thread_id'    
-        ,table_id)
-        .limit(limit)
+        commentary_data = await onQueryDataList(
+        limit_number,
+        page_number,
+        {
+            name:'vw_table_post_commentary',
+            fieldSelect:`
+            commentary_id,
+            post_id,
+            thread_id,
+            for_respond_id,
+            username,
+            user_small_photo,
+            description,
+            like_qnt,
+            response_quantity,
+            creation_date_interval`
+        },[
+            {
+                column:type === 'post' 
+                ? 'post_id'
+                : 'for_respond_id',
+                operator:"eq",
+                value:table_id
+            },
+            {
+                column:"thread_id",
+                operator:type === 'post'
+                ? "eq"
+                : "neq",
+                value:null
+            },
+            {
+                column:"creation_date",
+                operator:"order",
+                value:{
+                    ascending:type === 'post'
+                    ? false
+                    : true
+                }
+            }
+        ])
+
+        // commentary_data = supabase.from("vw_table_post_commentary")
+        // .select(`
+        // commentary_id,
+        // post_id,
+        // thread_id,
+        // for_respond_id,
+        // username,
+        // user_small_photo,
+        // description,
+        // like_qnt,
+        // response_quantity,
+        // creation_date_interval
+        // `)
+        // .eq(type === 'post'
+        // ? 'post_id'
+        // : 'thread_id'    
+        // ,table_id)
+        // .limit(limit)
         
-        if (type === 'post') {
-        commentary_data = commentary_data.is('thread_id', null);
-        } else {
-        commentary_data = commentary_data.not('thread_id', 'is', null).order("creation_date",{
-            ascending:true
-        });
-        }
+        // if (type === 'post') {
+        // commentary_data = commentary_data.is('thread_id', null);
+        // } else {
+        // commentary_data = commentary_data.not('thread_id', 'is', null).order("creation_date",{
+        //     ascending:true
+        // });
+        // }
 
-        commentary_like_data = 
-        !(await commentary_data.error)
-        ?
-        (async()=>{
-            const commentary_user_like = await supabase.from("tb_commentary_like")
-        .select("fk_id_commentary")
-        .in('fk_id_commentary',(await commentary_data).data.map((commentary)=>commentary.commentary_id))
-        .eq("fk_id_user",user_auth.id)
-        .limit(limit)
 
-            return !commentary_user_like.error
-            &&
-            commentary_user_like.data.map((commentary)=>commentary.fk_id_commentary)
+        // commentary_like_data = await onQueryDataList(
+        //     limit_number,
+        //     page_number,
+        //     {
+        //         name:"tb_commentary_like",
+        //         fieldSelect:"fk_id_commentary"
+        //     },
+        //     [
+        //         {
+        //             column:"fk_id_commentary",
+        //             operator:"in",
+        //             value:(commentary_data).data.map((commentary)=>commentary.commentary_id)
+        //         },
+        //         {
+        //             column:'fk_id_user',
+        //             operador:"eq",
+        //             value:user_auth.id
+        //         }
+        //     ]
+        // )
 
-        })()
-        : []
+        // commentary_like_data = 
+        // !(await commentary_data.error)
+        // ?
+        // (async()=>{
+        //     const commentary_user_like = await supabase.from("tb_commentary_like")
+        // .select("fk_id_commentary")
+        // .in('fk_id_commentary',(await commentary_data).data.map((commentary)=>commentary.commentary_id))
+        // .eq("fk_id_user",user_auth.id)
+        // .limit(limit)
+
+        //     return !commentary_user_like.error
+        //     &&
+        //     commentary_user_like.data.map((commentary)=>commentary.fk_id_commentary)
+
+        // })()
+        // : []
 
 
         !(await commentary_data.error)
         &&
         !(await commentary_like_data.error)
-        &&
-        !(await commentary_count.error)
         ?
         res.status(200).send({message:"Comentários listados com sucesso",status:200,data:{
             commentary_list:(await commentary_data).data,
-            liked_commentary_list:(await commentary_like_data),
-            commentary_list_count_remaining:((await commentary_count).count - limit)
+            liked_commentary_list:(await commentary_like_data).data.map((commentary)=>commentary.fk_id_commentary),
+            commentary_list_count_remaining:((await commentary_data).remaining)
         }})
         :
         res.status(500).send({message:"Erro interno no Servidor",status:500})

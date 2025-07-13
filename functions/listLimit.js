@@ -19,6 +19,12 @@ const onQueryDataList = async (limit, page, table, filters = []) => {
   const countResult = await query;
 
   if (countResult.error) {
+    console.log({
+        limit:limit,
+        page:page,
+        table:table,
+        filters:filters
+    })
     console.error('Erro ao contar dados:', countResult.error);
     return { error: countResult.error };
   }

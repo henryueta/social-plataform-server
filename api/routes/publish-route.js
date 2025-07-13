@@ -115,8 +115,6 @@ publish_router.get("/publish/get/group",async(req,res)=>{
         !post_data.error
         &&
         !like_data.error
-        &&
-        !post_count.error
         ? (()=>{
 
             console.log("DATA",post_data.data)
@@ -132,9 +130,6 @@ publish_router.get("/publish/get/group",async(req,res)=>{
         post_data.error
         ? res.status(500).send({message:post_data.error,status:500})
         :
-        post_count.error
-        ? res.status(500).send({message:post_count.error,status:500})
-        : 
         like_data.error
         &&
         res.status(500).send({message:like_data.error,status:500})
