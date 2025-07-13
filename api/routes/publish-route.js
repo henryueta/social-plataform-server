@@ -4,6 +4,7 @@ const {supabase} = require('../config/database.js')
 const {upload} = require('../../middlewares/multer.js')
 const {Jimp}  = require('jimp')
 const { readToken } = require('../../functions/token.js')
+const { onQueryDataList } = require('../../functions/listLimit.js')
 
 const publish_router = express.Router()
 
@@ -13,19 +14,22 @@ publish_router.get("/publish/get/group",async(req,res)=>{
         if(!user_auth){
             return res.status(401).send({message:"Usuário não autenticado",status:401})
         }
-        const {type,username,limit} = req.query
+        const {type,username,limit,page} = req.query
         let post_data = null;
         let like_data = null;
         let post_count = null;
-        console.log("limite:",limit)
+
+        const limit_number = parseInt(limit)
+
+        const page_number = parseInt(page)
+
         switch (type) {
             case "all":
-                post_count = await supabase.from('vw_table_post')
-                .select("username",{
-                    count:'exact'
-                })
-                post_data = await supabase.from("vw_table_post")
-                .select(`
+
+                post_data = await onQueryDataList(limit_number,page_number,{
+                    name:'vw_table_post',
+                    fieldCount:"username",
+                    fieldSelect:`
                     user_small_photo,
                     username,
                     creation_date_interval,
@@ -34,22 +38,40 @@ publish_router.get("/publish/get/group",async(req,res)=>{
                     like_qnt,
                     commentary_qnt,
                     post_id
-                    `)
-                    .limit(limit);
-                like_data = await supabase.from("tb_post_like")
-                .select("fk_id_post")
-                .eq("fk_id_user",user_auth.id)
-                .limit(limit);
+                    `
+                })
+
+                // post_data = await supabase.from("vw_table_post")
+                // .select(`
+                //     user_small_photo,
+                //     username,
+                //     creation_date_interval,
+                //     creation_date,
+                //     description,
+                //     like_qnt,
+                //     commentary_qnt,
+                //     post_id
+                //     `)
+                //     .limit(limit);
+                // like_data = await supabase.from("tb_post_like")
+                // .select("fk_id_post")
+                // .eq("fk_id_user",user_auth.id)
+                // .limit(limit);
+
+                like_data = await onQueryDataList(limit_number,page_number,{
+                    name:"tb_post_like",
+                    fieldCount:"id",
+                    fieldSelect:"fk_id_post"
+                },[{column:"fk_id_user",operator:"eq",value:user_auth.id}])
+                
                 break;
             case "especific":
-                post_count = await supabase.from('vw_table_post')
-                .select("username",{
-                    count:'exact'
-                })
-                .eq("username",username)
-
-                post_data = await supabase.from("vw_table_post")
-                .select(`
+                post_data  = await onQueryDataList(
+                limit_number,
+                page_number,
+                {
+                    name:"vw_table_post",
+                    fieldSelect:`
                     user_small_photo,
                     username,
                     creation_date_interval,
@@ -57,14 +79,33 @@ publish_router.get("/publish/get/group",async(req,res)=>{
                     like_qnt,
                     commentary_qnt,
                     post_id
-                    `)
-                .eq("username",username)
-                .limit(limit);
+                    `
+                },[{column:"username",operador:"eq",value:username}])
+                
+                like_data = await onQueryDataList(
+                    limit_number,
+                    page_number,
+                    {
+                        name:"tb_post_like",
+                        fieldSelect:"fk_id_post"
+                    },[{column:"fk_id_user",operador:"eq",value:user_auth.id}])
+                // post_data = await supabase.from("vw_table_post")
+                // .select(`
+                //     user_small_photo,
+                //     username,
+                //     creation_date_interval,
+                //     description,
+                //     like_qnt,
+                //     commentary_qnt,
+                //     post_id
+                //     `)
+                // .eq("username",username)
+                // .limit(limit);
 
-                like_data = await supabase.from("tb_post_like")
-                .select("fk_id_post")
-                .eq("fk_id_user",user_auth.id)
-                .limit(limit);
+                // like_data = await supabase.from("tb_post_like")
+                // .select("fk_id_post")
+                // .eq("fk_id_user",user_auth.id)
+                // .limit(limit);
                 break;
             default:
                 break;
@@ -77,11 +118,14 @@ publish_router.get("/publish/get/group",async(req,res)=>{
         &&
         !post_count.error
         ? (()=>{
+
+            console.log("DATA",post_data.data)
+
             return res.status(200).send({message:"Postagens listados com sucesso",status:200,
         data:{
             post_list:post_data.data,
             liked_posts:like_data.data.map((id)=>id.fk_id_post),
-            post_list_count_remaining:(post_count.count-limit)
+            post_list_count_remaining:post_data.remaining
         }})
         })()
         : 

@@ -13,39 +13,84 @@ commentary_router.post("/commentary/post",upload.none(),async(req,res)=>{
         if(!user_auth){
             return res.status(401).send({message:"Usuário não autenticado",status:401})
         } 
-        const {type,table_id} = req.query
+        const {type} = req.query
 
-        const {description,post_id} = req.body
+        const {description,post_id,thread_id,for_respond_id} = req.body
         
 
         const commentary_current_data = 
         !!(type === 'commentary')
-        ? {
-            description:description,
-            fk_id_user:user_auth.id,
-            fk_id_post:post_id,
+        ? (async ()=>{
+
+        const user_for_response = await supabase.from("vw_table_post_commentary")
+        .select("username")
+        .eq("commentary_id",for_respond_id)
+
+            return !user_for_response.error
+            ?  {
+                description:`@${user_for_response.data[0].username} ${description}`,
+                fk_id_user:user_auth.id,
+                fk_id_post:post_id,
+                fk_id_thread:thread_id,
+                fk_id_for_respond:for_respond_id
+            }
+            : {
+                description:description,
+                fk_id_user:user_auth.id,
+                fk_id_post:post_id,
+                fk_id_thread:thread_id,
+                fk_id_for_respond:for_respond_id
+            } 
             
-        }
+
+        })()
         : {
             description:description,
             fk_id_user:user_auth.id,
             fk_id_post:post_id
         }
 
+
+
         const commentary_action_data = await supabase.from("tb_commentary")
-        .insert(commentary_current_data)
+        .insert((await commentary_current_data))
         .select("id");
 
-        !!commentary_action_data.data
+        const post_data  = await supabase.from("tb_post")
+        .select("commentary_qnt")
+        .eq("id",post_id)
+
+        !commentary_action_data.error
+        &&
+        !post_data.error
         ? (async ()=>{
-            // const post_commentary_action = await supabase.from("tb_post")
-            // .update({
-            //     commentary_qnt:
-            // })
-            return res.status(201).send(
-                {message:"Comentário adicionado com sucesso",
-                status:201
+
+            const commentary_data = await supabase.from("vw_table_post_commentary")
+            .select(`commentary_id,
+            username,
+            user_small_photo,
+            description,
+            like_qnt,
+            response_quantity,
+            creation_date_interval`)
+            .eq("commentary_id",commentary_action_data.data[0].id);
+
+            await supabase.from("tb_post")
+            .update({
+                commentary_qnt:(post_data.data[0].commentary_qnt+1)
             })
+            .eq("id",post_id);
+
+            return !commentary_data.error
+            ?
+            res.status(201).send(
+                {message:"Comentário adicionado com sucesso",
+                status:201,
+                data:{
+                    commentary:commentary_data.data[0]
+                }
+            })
+            : res.status(500).send({message:commentary_data.error,status:500})
         })()
         : res.status(500).send({message:commentary_action_data.error,status:500})
 
@@ -86,6 +131,9 @@ commentary_router.get("/commentary/get",async(req,res)=>{
         commentary_data = supabase.from("vw_table_post_commentary")
         .select(`
         commentary_id,
+        post_id,
+        thread_id,
+        for_respond_id,
         username,
         user_small_photo,
         description,
@@ -102,7 +150,9 @@ commentary_router.get("/commentary/get",async(req,res)=>{
         if (type === 'post') {
         commentary_data = commentary_data.is('thread_id', null);
         } else {
-        commentary_data = commentary_data.not('thread_id', 'is', null);
+        commentary_data = commentary_data.not('thread_id', 'is', null).order("creation_date",{
+            ascending:true
+        });
         }
 
         commentary_like_data = 
