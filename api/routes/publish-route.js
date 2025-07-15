@@ -80,7 +80,7 @@ publish_router.get("/publish/get/group",async(req,res)=>{
                     commentary_qnt,
                     post_id
                     `
-                },[{column:"username",operador:"eq",value:username}])
+                },[{column:"username",operator:"eq",value:username}])
                 
                 like_data = await onQueryDataList(
                     limit_number,
@@ -88,7 +88,7 @@ publish_router.get("/publish/get/group",async(req,res)=>{
                     {
                         name:"tb_post_like",
                         fieldSelect:"fk_id_post"
-                    },[{column:"fk_id_user",operador:"eq",value:user_auth.id}])
+                    },[{column:"fk_id_user",operator:"eq",value:user_auth.id}])
                 // post_data = await supabase.from("vw_table_post")
                 // .select(`
                 //     user_small_photo,

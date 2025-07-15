@@ -157,10 +157,10 @@ commentary_router.get("/commentary/get",async(req,res)=>{
                 value:table_id
             },
             {
-                column:"thread_id",
+                column:"for_respond_id",
                 operator:type === 'post'
-                ? "eq"
-                : "neq",
+                ? "is"
+                : "not",
                 value:null
             },
             {
@@ -200,28 +200,30 @@ commentary_router.get("/commentary/get",async(req,res)=>{
         //     ascending:true
         // });
         // }
-
-
-        // commentary_like_data = await onQueryDataList(
-        //     limit_number,
-        //     page_number,
-        //     {
-        //         name:"tb_commentary_like",
-        //         fieldSelect:"fk_id_commentary"
-        //     },
-        //     [
-        //         {
-        //             column:"fk_id_commentary",
-        //             operator:"in",
-        //             value:(commentary_data).data.map((commentary)=>commentary.commentary_id)
-        //         },
-        //         {
-        //             column:'fk_id_user',
-        //             operador:"eq",
-        //             value:user_auth.id
-        //         }
-        //     ]
-        // )
+                    
+        commentary_like_data = await onQueryDataList(
+            limit_number,
+            page_number,
+            {
+                name:"tb_commentary_like",
+                fieldSelect:"fk_id_commentary"
+            },
+            [
+                {
+                    column:"fk_id_commentary",
+                    operator:"in",
+                    value:(await commentary_data).data.map((commentary)=>{
+                        console.log("commentary",commentary)
+                        return commentary.commentary_id
+                    })
+                },
+                {
+                    column:'fk_id_user',
+                    operator:"eq",
+                    value:user_auth.id
+                }
+            ]
+        )
 
         // commentary_like_data = 
         // !(await commentary_data.error)
@@ -239,7 +241,7 @@ commentary_router.get("/commentary/get",async(req,res)=>{
 
         // })()
         // : []
-
+        
 
         !(await commentary_data.error)
         &&
