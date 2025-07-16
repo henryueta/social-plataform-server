@@ -213,7 +213,6 @@ commentary_router.get("/commentary/get",async(req,res)=>{
                     column:"fk_id_commentary",
                     operator:"in",
                     value:(await commentary_data).data.map((commentary)=>{
-                        console.log("commentary",commentary)
                         return commentary.commentary_id
                     })
                 },

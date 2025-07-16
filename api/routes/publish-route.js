@@ -117,7 +117,6 @@ publish_router.get("/publish/get/group",async(req,res)=>{
         !like_data.error
         ? (()=>{
 
-            console.log("DATA",post_data.data)
 
             return res.status(200).send({message:"Postagens listados com sucesso",status:200,
         data:{
@@ -185,39 +184,45 @@ publish_router.get("/publish/get/single",async(req,res)=>{
     }
 })
 
-publish_router.post("/publish/post",upload.single('image'),async(req,res)=>{
-        const auth_token = req.cookies['auth_token'];
+publish_router.post("/publish/post",upload.none(),async(req,res)=>{
 
-        const buffer = req.file.buffer;
-        const jimpImage = await Jimp.read(buffer)
+        // const buffer = req.file.buffer;
+        // const jimpImage = await Jimp.read(buffer)
         
-        jimpImage.resize({
-            h:300,
-            w:600
-        });
+        // jimpImage.resize({
+        //     h:300,
+        //     w:600
+        // });
 
-        const outputBuffer = await jimpImage.getBuffer("image/jpeg",{
-            quality:60
-        })
+        // const outputBuffer = await jimpImage.getBuffer("image/jpeg",{
+        //     quality:60
+        // })
 
 
-        const {data,error} = await supabase.storage
-        .from('social-plataform-storage/post/')
-        .upload("teste"+Date.now(),outputBuffer,{
-            contentType:"image/webp",
-            upsert:false
-        })
+        // const {data,error} = await supabase.storage
+        // .from('social-plataform-storage/post/')
+        // .upload("teste"+Date.now(),outputBuffer,{
+        //     contentType:"image/webp",
+        //     upsert:false
+        // })
 
-        !!data
-        ? console.log(data)
-        : console.log(error)
-
+    const user_auth = readToken(req.cookies['auth_token'])
     try {
-        if(!auth_token){
-                    return res.status(401).send({message:"Usuário não autenticado",status:401})
-        }
-        const decoded_token = jsonwebtoken.verify(auth_token.token,'shhhhh');
+        if(!user_auth){
+            return res.status(401).send({message:"Usuário não autenticado",status:401})
+        }         
 
+        const {description} = req.body
+
+        const insert_post = await supabase.from("tb_post")
+        .insert({
+            description:description,
+            fk_id_user:user_auth.id
+        })
+
+        !insert_post.error
+        ? res.status(201).send({message:"Postagem criada com sucesso",status:201})
+        : res.status(500).send({message:insert_post.error,status:500}) 
 
     } catch (error) {
         console.log(error)
@@ -230,7 +235,6 @@ publish_router.post("/publish/post",upload.single('image'),async(req,res)=>{
 
 publish_router.put("/publish/put/social_status",async (req,res)=>{
     const user_auth = readToken(req.cookies['auth_token'])
-    console.log("REQ")
     try {
         if(!user_auth){
             return res.status(401).send({message:"Usuário não autenticado",status:401})

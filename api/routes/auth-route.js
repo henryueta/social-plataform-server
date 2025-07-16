@@ -19,7 +19,6 @@ auth_router.get("/auth/checkout",upload.none(),async (req,res)=>{
     try {
         const decoded_token = jsonwebtoken.verify(auth_token.token,'shhhhh');
 
-        console.log(decoded_token)
 
         res.status(200).send({message:"auth",status:200})
 
@@ -34,11 +33,6 @@ auth_router.post("/auth/register",upload.none(),async(req,res)=>{
 
     try{
         const {email,password,username} = req.body;
-        console.log("data",{
-            username:username,
-            email:email,
-            password:password
-        })
         const database_users = await supabase
         .from("tb_user")
         .select("username,email")
@@ -79,7 +73,6 @@ auth_router.post("/auth/register",upload.none(),async(req,res)=>{
 auth_router.post("/auth/login",upload.none(),async (req,res)=>{
 
     try{
-        console.log(req.body)
         const {email,password} = req.body;
         
         const database_users = await supabase
