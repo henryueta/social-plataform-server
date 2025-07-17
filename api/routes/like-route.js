@@ -169,7 +169,6 @@ like_router.get("/like/get",async(req,res)=>{
             )
             ?
             (async()=>{
-                console.log("AAA")
 
                 return {
                 like_user_list:(await like_user_list).data.map((like_user)=>{

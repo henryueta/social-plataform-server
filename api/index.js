@@ -6,6 +6,7 @@ const {auth_router} = require('./routes/auth-route.js')
 const {publish_router} = require('./routes/publish-route.js')
 const {like_router} = require('./routes/like-route.js')
 const {commentary_router} = require('./routes/commentary-route.js')
+const { notification_router } = require('./routes/notification-route.js')
 
 const server = express();
 
@@ -20,6 +21,7 @@ server.use(auth_router)
 server.use(publish_router)
 server.use(like_router)
 server.use(commentary_router)
+server.use(notification_router)
 
 server.get("/",(req,res)=>{
 

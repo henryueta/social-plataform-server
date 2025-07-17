@@ -17,7 +17,6 @@ publish_router.get("/publish/get/group",async(req,res)=>{
         const {type,username,limit,page} = req.query
         let post_data = null;
         let like_data = null;
-        let post_count = null;
 
         const limit_number = parseInt(limit)
 
@@ -221,8 +220,29 @@ publish_router.post("/publish/post",upload.none(),async(req,res)=>{
         })
 
         !insert_post.error
-        ? res.status(201).send({message:"Postagem criada com sucesso",status:201})
-        : res.status(500).send({message:insert_post.error,status:500}) 
+        ? (async ()=>{
+
+            const user_data = await supabase.from("tb_user")
+            .select("post_qnt")
+            .eq('id',user_auth.id)
+
+            const update_user_data = await supabase.from("tb_user")
+            .update({
+                post_qnt:await user_data.data[0].post_qnt+1
+            })
+            .eq("id",user_auth.id)
+
+
+            return !update_user_data.error
+            &&
+            res.status(201).send({message:"Postagem criada com sucesso",status:201})
+        })()
+        : (()=>{
+
+           return res.status(500).send({message:insert_post.error,status:500})
+
+        })()
+
 
     } catch (error) {
         console.log(error)
