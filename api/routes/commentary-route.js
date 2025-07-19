@@ -27,6 +27,8 @@ commentary_router.post("/commentary/post",upload.none(),async(req,res)=>{
         .select("username")
         .eq("commentary_id",for_respond_id)
 
+            console.log("DATA",req.body)
+
             return !user_for_response.error
             ?  {
                 description:`@${user_for_response.data[0].username} ${description}`,
@@ -68,6 +70,7 @@ commentary_router.post("/commentary/post",upload.none(),async(req,res)=>{
 
             const commentary_data = await supabase.from("vw_table_post_commentary")
             .select(`commentary_id,
+            post_id,
             username,
             user_small_photo,
             description,
