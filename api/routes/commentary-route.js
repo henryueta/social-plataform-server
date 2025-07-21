@@ -146,6 +146,7 @@ commentary_router.get("/commentary/get",async(req,res)=>{
             thread_id,
             for_respond_id,
             username,
+            namertag,
             user_small_photo,
             description,
             like_qnt,
@@ -203,29 +204,39 @@ commentary_router.get("/commentary/get",async(req,res)=>{
         //     ascending:true
         // });
         // }
-                    
-        commentary_like_data = await onQueryDataList(
-            limit_number,
-            page_number,
-            {
-                name:"tb_commentary_like",
-                fieldSelect:"fk_id_commentary"
-            },
-            [
-                {
-                    column:"fk_id_commentary",
-                    operator:"in",
-                    value:(await commentary_data).data.map((commentary)=>{
+        
+        console.log("comentario",commentary_data.data)
+
+
+        commentary_like_data = await supabase.from("tb_commentary_like")
+        .select("fk_id_commentary")
+        .in("fk_id_commentary",(commentary_data).data.map((commentary)=>{
                         return commentary.commentary_id
-                    })
-                },
-                {
-                    column:'fk_id_user',
-                    operator:"eq",
-                    value:user_auth.id
-                }
-            ]
-        )
+        }))
+        .eq("fk_id_user",user_auth.id)
+
+        // commentary_like_data = await onQueryDataList(
+        //     limit_number,
+        //     page_number,
+        //     {
+        //         name:"tb_commentary_like",
+        //         fieldSelect:"fk_id_commentary"
+        //     },
+        //     [
+        //         {
+        //             column:"fk_id_commentary",
+        //             operator:"in",
+        //             value:(await commentary_data).data.map((commentary)=>{
+        //                 return commentary.commentary_id
+        //             })
+        //         },
+        //         {
+        //             column:'fk_id_user',
+        //             operator:"eq",
+        //             value:user_auth.id
+        //         }
+        //     ]
+        // )
 
         // commentary_like_data = 
         // !(await commentary_data.error)

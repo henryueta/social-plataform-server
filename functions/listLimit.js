@@ -1,6 +1,10 @@
 const {supabase} = require('../api/config/database')
 
 const onQueryDataList = async (limit, page, table, filters = []) => {
+
+  console.log("limiteBody",limit)
+  console.log("pageBody",page)
+
   const limit_start = limit * (page - 1);
   const limit_end = limit_start + limit - 1;
 

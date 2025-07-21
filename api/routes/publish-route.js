@@ -31,6 +31,7 @@ publish_router.get("/publish/get/group",async(req,res)=>{
                     fieldSelect:`
                     user_small_photo,
                     username,
+                    namertag,
                     creation_date_interval,
                     creation_date,
                     description,
@@ -56,13 +57,11 @@ publish_router.get("/publish/get/group",async(req,res)=>{
                 // .select("fk_id_post")
                 // .eq("fk_id_user",user_auth.id)
                 // .limit(limit);
+                like_data = await supabase.from("tb_post_like")
+                .select("fk_id_post",{count:'exact'})
+                .eq("fk_id_user",user_auth.id)
+                .in("fk_id_post",post_data.data.map((post)=>post.post_id))
 
-                like_data = await onQueryDataList(limit_number,page_number,{
-                    name:"tb_post_like",
-                    fieldCount:"id",
-                    fieldSelect:"fk_id_post"
-                },[{column:"fk_id_user",operator:"eq",value:user_auth.id}])
-                
                 break;
             case "especific":
                 post_data  = await onQueryDataList(
@@ -73,6 +72,7 @@ publish_router.get("/publish/get/group",async(req,res)=>{
                     fieldSelect:`
                     user_small_photo,
                     username,
+                    namertag,
                     creation_date_interval,
                     description,
                     like_qnt,
@@ -81,13 +81,19 @@ publish_router.get("/publish/get/group",async(req,res)=>{
                     `
                 },[{column:"username",operator:"eq",value:username}])
                 
-                like_data = await onQueryDataList(
-                    limit_number,
-                    page_number,
-                    {
-                        name:"tb_post_like",
-                        fieldSelect:"fk_id_post"
-                    },[{column:"fk_id_user",operator:"eq",value:user_auth.id}])
+                // like_data = await onQueryDataList(
+                //     limit_number,
+                //     page_number,
+                //     {
+                //         name:"tb_post_like",
+                //         fieldSelect:"fk_id_post"
+                //     },[{column:"fk_id_user",operator:"eq",value:user_auth.id}])
+
+                like_data = await supabase.from("tb_post_like")
+                .select("fk_id_post",{count:'exact'})
+                .eq("fk_id_user",user_auth.id)
+                .in("fk_id_post",post_data.data.map((post)=>post.post_id))
+
                 // post_data = await supabase.from("vw_table_post")
                 // .select(`
                 //     user_small_photo,
@@ -110,7 +116,6 @@ publish_router.get("/publish/get/group",async(req,res)=>{
                 break;
         }
 
-
         !post_data.error
         &&
         !like_data.error
@@ -121,7 +126,8 @@ publish_router.get("/publish/get/group",async(req,res)=>{
         data:{
             post_list:post_data.data,
             liked_posts:like_data.data.map((id)=>id.fk_id_post),
-            post_list_count_remaining:post_data.remaining
+            post_list_count_remaining:post_data.remaining,
+            isStart:!!(page_number === 1)
         }})
         })()
         : 
@@ -153,11 +159,13 @@ publish_router.get("/publish/get/single",async(req,res)=>{
         .select(`
         user_small_photo,
         username,
+        namertag,
         creation_date_interval,
         description,
         like_qnt,
         commentary_qnt,
-        post_id
+        post_id,
+        user_id
         `)
         .eq("post_id",id);
 
@@ -166,6 +174,12 @@ publish_router.get("/publish/get/single",async(req,res)=>{
         .eq("fk_id_user",user_auth.id)
         .eq('fk_id_post',id);
 
+        const post_same_user_check = (()=>{
+            return !post_data.error
+            ? !!(post_data.data[0].user_id === user_auth.id)
+            : res.status(500).send({message:post_data.error,status:500})
+        })()
+
         !post_data.error
         &&
         !post_like_data.error
@@ -173,6 +187,7 @@ publish_router.get("/publish/get/single",async(req,res)=>{
         res.status(200).send({message:"Postagem listado com sucesso",status:200,data:{
             post:post_data.data[0],
             liked_post:!!post_like_data.data.length,
+            isSameUser:post_same_user_check
         }})
         :
         res.status(500).send({message:"Erro interno no Servidor",status:500})

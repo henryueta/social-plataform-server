@@ -4,6 +4,7 @@ const {supabase} = require('../config/database.js')
 const {upload} = require('../../middlewares/multer.js')
 const {readToken} = require("../../functions/token.js")
 const {Jimp}  = require('jimp')
+const { onQueryDataList } = require('../../functions/listLimit.js')
 
 const user_router = express.Router()
 
@@ -110,27 +111,56 @@ user_router.post("/user/post/follow",upload.none(),async(req,res)=>{
 
 user_router.get("/user/get/group",async (req,res)=>{
         const user_auth = readToken(req.cookies['auth_token'])
-
+        
     try {
-        const {type,hasImage} = req.query
+        const {type,hasImage,page,limit,username} = req.query
+
+        const limit_number = parseInt(limit)
+        const page_number = parseInt(page)
+
         let user_list_data = null;
         if(!user_auth.validated){
             return res.status(401).send({message:"Usuário não autenticado",status:401})
         }
-
+        const user_identifier = 
+                        !!(username)
+                        ? username
+                        : user_auth.id
+                    
+                    console.log("identifier",user_identifier)
         switch (type) {
             case "following":
-                user_list_data = await supabase
-                .from("vw_table_following")
-                .select("username:following_username"+(!!hasImage&&",image:following_photo"))
-                .eq("user_id",user_auth.id);
+                user_list_data = await onQueryDataList(limit_number,page_number,{
+                    name:'vw_table_following',
+                    fieldSelect:"username:following_username,namertag:following_namertag"+(!!hasImage&&",image:following_photo")
+                },[
+                    {column:(
+                        username
+                        ? "user_username"
+                        : 'user_id'
+                    ),operator:'eq',value:user_identifier}
+                ])
                 break;
-                
+            case "followers":
+                user_list_data = await onQueryDataList(limit_number,page_number,{
+                    name:'vw_table_following',
+                    fieldSelect:"username:user_username,namertag:user_namertag"+(!!hasImage&&",image:user_photo")
+                },[
+                    {column:(
+                        username
+                        ? "following_username"
+                        : 'following_id'
+                    ),operator:'eq',value:user_identifier}
+                ])
+                break;
             default:
                 break;
         }
         !!user_list_data.data
-        ? res.status(200).send({message:"Usuários listados com sucesso",status:200,data:user_list_data.data})
+        ? res.status(200).send({message:"Usuários listados com sucesso",status:200,data:{
+            user_list_data:user_list_data.data,
+            user_list_count_remaining:user_list_data.remaining
+        }})
         : res.status(500).send({message:user_list_data.error,status:500})
 
     } catch (error) {
@@ -170,7 +200,7 @@ user_router.get("/user/get/single",async (req,res)=>{
             case "small":
                 user_data = await supabase
                 .from("tb_user")
-                .select("username"+(!!hasImage && ",image:small_profile_photo"))
+                .select("username,namertag"+(!!hasImage && ",image:small_profile_photo"))
                 .eq("id",user_auth.id);
 
                 following_data = await supabase
@@ -202,7 +232,7 @@ user_router.get("/user/get/single",async (req,res)=>{
             case "social":
                 user_data = await supabase
                 .from("tb_user")
-                .select("username,followers_qnt,following_qnt,post_qnt,image:big_profile_photo")
+                .select("username,namertag,followers_qnt,following_qnt,post_qnt,image:big_profile_photo")
                 .eq("username",username)
 
                 following_data = await supabase
