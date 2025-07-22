@@ -6,6 +6,19 @@ const {upload} = require('../../middlewares/multer.js')
 
 const auth_router = express.Router()
 
+auth_router.get("/auth/logout",upload.none(),async(req,res)=>{
+    const user_auth = readToken(req.cookies['auth_token'])
+        try {
+            if(!user_auth){
+                return res.status(401).send({message:"Usuário não autenticado",status:401})
+            } 
+        res.clearCookie('auth_token')
+        res.status(200).send({message:"Logout realizado com sucesso",status:200})
+
+    } catch (error) {
+        res.status(500).send({message:error,status:500})
+    }
+})
 
 auth_router.get("/auth/checkout",upload.none(),async (req,res)=>{
 

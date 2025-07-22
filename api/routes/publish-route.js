@@ -41,26 +41,41 @@ publish_router.get("/publish/get/group",async(req,res)=>{
                     `
                 })
 
-                // post_data = await supabase.from("vw_table_post")
-                // .select(`
-                //     user_small_photo,
-                //     username,
-                //     creation_date_interval,
-                //     creation_date,
-                //     description,
-                //     like_qnt,
-                //     commentary_qnt,
-                //     post_id
-                //     `)
-                //     .limit(limit);
-                // like_data = await supabase.from("tb_post_like")
-                // .select("fk_id_post")
-                // .eq("fk_id_user",user_auth.id)
-                // .limit(limit);
-                like_data = await supabase.from("tb_post_like")
-                .select("fk_id_post",{count:'exact'})
-                .eq("fk_id_user",user_auth.id)
-                .in("fk_id_post",post_data.data.map((post)=>post.post_id))
+
+                break;
+            case "following":
+                
+                post_data = await (async()=>{
+
+                    const following_data = await supabase.from("vw_table_following")
+                    .select("following_id")
+                    .eq("user_id",user_auth.id)
+
+                    return !following_data.error
+                    &&
+                    await onQueryDataList(
+                    limit_number,
+                    page_number,
+                    {
+                        name:"vw_table_post",
+                        fieldSelect:`
+                        user_small_photo,
+                        username,
+                        namertag,
+                        creation_date_interval,
+                        description,
+                        like_qnt,
+                        commentary_qnt,
+                        post_id`
+                    },
+                    [{column:"user_id",operator:"in",value:following_data.data.map((following)=>
+                        following.following_id    
+                    )}]
+                )
+
+                })()
+
+          
 
                 break;
             case "especific":
@@ -80,41 +95,17 @@ publish_router.get("/publish/get/group",async(req,res)=>{
                     post_id
                     `
                 },[{column:"username",operator:"eq",value:username}])
+     
                 
-                // like_data = await onQueryDataList(
-                //     limit_number,
-                //     page_number,
-                //     {
-                //         name:"tb_post_like",
-                //         fieldSelect:"fk_id_post"
-                //     },[{column:"fk_id_user",operator:"eq",value:user_auth.id}])
-
-                like_data = await supabase.from("tb_post_like")
-                .select("fk_id_post",{count:'exact'})
-                .eq("fk_id_user",user_auth.id)
-                .in("fk_id_post",post_data.data.map((post)=>post.post_id))
-
-                // post_data = await supabase.from("vw_table_post")
-                // .select(`
-                //     user_small_photo,
-                //     username,
-                //     creation_date_interval,
-                //     description,
-                //     like_qnt,
-                //     commentary_qnt,
-                //     post_id
-                //     `)
-                // .eq("username",username)
-                // .limit(limit);
-
-                // like_data = await supabase.from("tb_post_like")
-                // .select("fk_id_post")
-                // .eq("fk_id_user",user_auth.id)
-                // .limit(limit);
                 break;
             default:
                 break;
         }
+
+        like_data = await supabase.from("tb_post_like")
+        .select("fk_id_post",{count:'exact'})
+        .eq("fk_id_user",user_auth.id)
+        .in("fk_id_post",post_data.data.map((post)=>post.post_id))
 
         !post_data.error
         &&
@@ -268,6 +259,66 @@ publish_router.post("/publish/post",upload.none(),async(req,res)=>{
 
 //'social_status' | 'structure'
 
+publish_router.put("/publish/delete",upload.none(),async (req,res)=>{
+    const user_auth = readToken(req.cookies['auth_token'])
+    try {
+        if(!user_auth){
+            return res.status(401).send({message:"Usuário não autenticado",status:401})
+        }
+
+        const {post_id} = req.query;
+
+        const post_delete = await supabase.from("tb_post")
+        .update({
+            is_deleted:true
+        })
+        .eq("id",post_id)
+        .select("id");
+
+        !post_delete.error
+        ? res.status(201).send({message:"Postagem marcada como excluida com sucesso",status:201})
+        : res.status(500).send({message:post_delete.error,status:500});
+
+    } 
+    catch(error){
+        console.log(error)
+        res.status(500).send({message:error,status:500})
+    }
+
+
+})
+
+publish_router.put("/publish/put/structure",upload.none(),async (req,res)=>{
+
+    const user_auth = readToken(req.cookies['auth_token'])
+    try {
+        if(!user_auth){
+            return res.status(401).send({message:"Usuário não autenticado",status:401})
+        } 
+        const {post_id} = req.query
+        const {description} = req.body
+
+        console.log(req.body)
+
+        const post_put = await supabase.from("tb_post")
+        .update({description:description})
+        .eq("id",post_id)
+        .select("description")
+
+        !post_put.error
+        ? res.status(200).send({message:"Postagem atualizada com sucesso",status:201,
+            data:post_put.data[0]
+        })
+        : res.status(500).send({message:post_put.error,status:500})
+        
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:error,status:500})
+    }
+
+})
+
 publish_router.put("/publish/put/social_status",async (req,res)=>{
     const user_auth = readToken(req.cookies['auth_token'])
     try {
@@ -279,7 +330,6 @@ publish_router.put("/publish/put/social_status",async (req,res)=>{
         let post_action_data = null;//table_action_data
         let post_action_verify = null;//table_action_verify post-comme
         let current_post_data = null;//current_table_data post-comme
-        let post_change_data = null;//table_change_data post-comme
         let formated_data = null
 
         current_post_data = await supabase.from("tb_post")//post-comme
