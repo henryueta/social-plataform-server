@@ -8,6 +8,48 @@ const { onQueryDataList } = require('../../functions/listLimit.js')
 
 const user_router = express.Router()
 
+user_router.put("/user/put",upload.none(),async(req,res)=>{
+const user_auth = readToken(req.cookies['auth_token'])
+
+    try {
+        if(!user_auth.validated){
+            return res.status(401).send({message:"Usuário não autenticado",status:401})
+        } 
+
+        const {username,image} = req.body
+
+        const user_username_list = await supabase.from("tb_user")
+        .select("username")
+        .neq("id",user_auth.id)
+
+        const findUsername = user_username_list.data.find((user)=>
+            user.username === username
+        )
+
+        if(!findUsername){
+
+            const user_put = await supabase.from("tb_user")
+            .update({
+                username:username,
+            })
+            .eq("id",user_auth.id)
+            
+            return !user_put.error
+            ? res.status(201).send({message:"Usuário modificado com sucesso",status:201})
+            : res.status(500).send({message:user_put.error,status:500})
+
+        }
+
+        return res.status(401).send({message:"Username já está em uso",status:401})
+
+
+    }
+    catch(error){
+        console.log(error)
+        res.status(500).send({message:error,status:500})
+    }
+
+})
 
 user_router.post("/user/post/follow",upload.none(),async(req,res)=>{
     const user_auth = readToken(req.cookies['auth_token'])
@@ -197,6 +239,37 @@ user_router.get("/user/get/single",async (req,res)=>{
         }
 
         switch (type) {
+            case "small_large":
+                user_data = await supabase
+                .from("tb_user")
+                .select("username,namertag"+(!!hasImage && ",image:big_profile_photo"))
+                .eq("id",user_auth.id);
+
+                following_data = await supabase
+                .from("vw_table_following")
+                .select("following_id")
+                .eq("user_id",user_auth.id)
+                .eq("following_username",username)///username
+
+                same_user = await supabase
+                .from("tb_user")
+                .select("username")
+                .eq("id",user_auth.id)
+                .eq("username",username)
+
+                !!same_user
+                &&
+                !!following_data.data
+                &&
+                !!user_data.data
+                &&
+                (()=>{
+                    formated_data = createFormatedData(
+                        user_data.data[0],
+                        !!following_data.data.length,
+                        !!same_user.data.length);
+                })()
+                break;
             case "small":
                 user_data = await supabase
                 .from("tb_user")

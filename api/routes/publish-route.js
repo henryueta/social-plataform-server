@@ -189,7 +189,7 @@ publish_router.get("/publish/get/single",async(req,res)=>{
     }
 })
 
-publish_router.post("/publish/post",upload.none(),async(req,res)=>{
+publish_router.post("/publish/post",upload.single("image"),async(req,res)=>{
 
         // const buffer = req.file.buffer;
         // const jimpImage = await Jimp.read(buffer)
@@ -275,8 +275,23 @@ publish_router.put("/publish/delete",upload.none(),async (req,res)=>{
         .eq("id",post_id)
         .select("id");
 
+        const user_data = await supabase.from("tb_user")
+        .select("post_qnt")
+        .eq("id",user_auth.id)
+
         !post_delete.error
-        ? res.status(201).send({message:"Postagem marcada como excluida com sucesso",status:201})
+        &&
+        !!user_data.data.length
+        ? (async()=>{
+
+            await supabase.from("tb_user")
+            .update({
+                post_qnt:(user_data.data[0].post_qnt-1)
+            })
+            .eq("id",user_auth.id)
+
+            res.status(201).send({message:"Postagem marcada como excluida com sucesso",status:201})
+        })()
         : res.status(500).send({message:post_delete.error,status:500});
 
     } 

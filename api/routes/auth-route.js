@@ -66,12 +66,20 @@ auth_router.post("/auth/checkout",upload.none(),async(req,res)=>{
             })
             .eq("id",user_auth.id)
 
-            return res.status(201).send({message:"Usuário verificado com sucesso",status:201})
+            return res.status(201).send({message:"Usuário verificado com sucesso",status:201,
+                data:{
+                    is_checked:true
+                }
+            })
         }
 
         if(!(current_user_code.data.length)){
 
-            return res.status(401).send({message:"Código de confirmação inválido",status:401})
+            return res.status(401).send({message:"Código de confirmação inválido",status:401,
+                data:{
+                    is_checked:false
+                }
+            })
     
         }
 
@@ -102,14 +110,15 @@ auth_router.get("/auth/logout",upload.none(),async(req,res)=>{
 auth_router.get("/auth/checkout",upload.none(),async (req,res)=>{
         const user_auth = readToken(req.cookies['auth_token'])
         try {
-            if(!user_auth){
+            if(!user_auth.validated){
                 return res.status(401).send({message:"Usuário não autenticado",status:401})
             } 
+
             const user_checkout = await supabase.from("tb_user")
             .select("is_checked,email")
             .eq("id",user_auth.id)
 
-            !user_checkout.error
+            return !user_checkout.error
             ? !!(user_checkout.data[0].is_checked)
                 ? res.status(200).send({message:"Usuário confirmado com sucesso",status:200,
                     data:user_checkout.data[0]
@@ -197,6 +206,28 @@ auth_router.get("/auth/checkout",upload.none(),async (req,res)=>{
 
 })
 
+auth_router.post("/auth/forgot",upload.none(),async (req,res)=>{
+        try {
+
+            const {email} = req.body
+
+            const check_email = await supabase.from("tb_user")
+            .select("email")
+            .eq("email",email)
+
+            !!check_email.data.length
+            ? res.status(201).send({message:"Email verificado com sucesso",status:201})
+            : res.status(401).send({message:"Email inválido ou inexistente",status:401})
+
+        }
+        catch(error){
+            console.log(error)
+            res.status(500).send({message:error,status:500})
+        }
+
+
+})
+
 auth_router.post("/auth/register",upload.none(),async(req,res)=>{
 
     try{
@@ -268,7 +299,7 @@ auth_router.post("/auth/login",upload.none(),async (req,res)=>{
             })
             res.status(201).send({message:"auth"})
         })()
-        : res.status(401).send({message:"no auth",status:401})
+        : res.status(401).send({message:"Email ou senha inválidos",status:401})
     }
     catch(error){
         console.log(error)
