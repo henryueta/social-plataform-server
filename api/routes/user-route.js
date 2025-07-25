@@ -171,6 +171,17 @@ user_router.get("/user/get/group",async (req,res)=>{
                     
                     console.log("identifier",user_identifier)
         switch (type) {
+            case "search":
+                const {search} = req.query
+                user_list_data = await onQueryDataList(limit_number,page_number,{
+                    name:"tb_user",
+                    fieldSelect:"username,namertag,image:small_profile_photo"
+                },[{
+                    column:"username",
+                    operator:"ilike",
+                    value:search+"%"
+                }])
+                break;
             case "following":
                 user_list_data = await onQueryDataList(limit_number,page_number,{
                     name:'vw_table_following',

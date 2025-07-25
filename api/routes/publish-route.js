@@ -23,6 +23,33 @@ publish_router.get("/publish/get/group",async(req,res)=>{
         const page_number = parseInt(page)
 
         switch (type) {
+
+            case "search":
+                const {search} = req.query
+                console.log("search",search)
+                post_data = await onQueryDataList(limit_number,page_number,{
+                    name:"vw_table_post",
+                    fieldCount:"username",
+                    fieldSelect:`
+                    user_small_photo,
+                    username,
+                    namertag,
+                    creation_date_interval,
+                    creation_date,
+                    description,
+                    image,
+                    like_qnt,
+                    commentary_qnt,
+                    post_id
+                    `
+                },[{
+                    column:"description",
+                    operator:"ilike",
+                    value:search+"%"
+                }])
+
+                break;
+
             case "all":
 
                 post_data = await onQueryDataList(limit_number,page_number,{
@@ -35,6 +62,7 @@ publish_router.get("/publish/get/group",async(req,res)=>{
                     creation_date_interval,
                     creation_date,
                     description,
+                    image,
                     like_qnt,
                     commentary_qnt,
                     post_id
@@ -64,6 +92,7 @@ publish_router.get("/publish/get/group",async(req,res)=>{
                         namertag,
                         creation_date_interval,
                         description,
+                        image,
                         like_qnt,
                         commentary_qnt,
                         post_id`
@@ -90,6 +119,7 @@ publish_router.get("/publish/get/group",async(req,res)=>{
                     namertag,
                     creation_date_interval,
                     description,
+                    image,
                     like_qnt,
                     commentary_qnt,
                     post_id
@@ -153,6 +183,7 @@ publish_router.get("/publish/get/single",async(req,res)=>{
         namertag,
         creation_date_interval,
         description,
+        image,
         like_qnt,
         commentary_qnt,
         post_id,
@@ -191,25 +222,6 @@ publish_router.get("/publish/get/single",async(req,res)=>{
 
 publish_router.post("/publish/post",upload.single("image"),async(req,res)=>{
 
-        // const buffer = req.file.buffer;
-        // const jimpImage = await Jimp.read(buffer)
-        
-        // jimpImage.resize({
-        //     h:300,
-        //     w:600
-        // });
-
-        // const outputBuffer = await jimpImage.getBuffer("image/jpeg",{
-        //     quality:60
-        // })
-
-
-        // const {data,error} = await supabase.storage
-        // .from('social-plataform-storage/post/')
-        // .upload("teste"+Date.now(),outputBuffer,{
-        //     contentType:"image/webp",
-        //     upsert:false
-        // })
 
     const user_auth = readToken(req.cookies['auth_token'])
     try {
@@ -218,12 +230,34 @@ publish_router.post("/publish/post",upload.single("image"),async(req,res)=>{
         }         
 
         const {description} = req.body
+        const buffer = req.file.buffer;
+        const jimpImage = await Jimp.read(buffer)
 
-        const insert_post = await supabase.from("tb_post")
-        .insert({
-            description:description,
-            fk_id_user:user_auth.id
+        const outputBuffer = await jimpImage.getBuffer("image/jpeg",{
+            quality:80
         })
+        const currentFileName = "post"+Date.now();
+        const currentPath = "social-plataform-storage/post/"+currentFileName
+
+        const image_upload = await supabase.storage
+        .from('social-plataform-storage/post/')
+        .upload(currentFileName,outputBuffer,{
+            contentType:"image/webp",
+            upsert:false
+        })
+
+        const insert_post = await (async()=>{
+
+            return !image_upload.error
+            ? await supabase.from("tb_post")
+            .insert({
+                description:description,
+                fk_id_user:user_auth.id,
+                image:currentPath
+            })
+            : {error:image_upload.error}
+
+        })()
 
         !insert_post.error
         ? (async ()=>{

@@ -6,6 +6,8 @@ const {upload} = require('../../middlewares/multer.js')
 const { readToken } = require('../../functions/token.js')
 const { sendEmail } = require('../../functions/emailSender.js')
 const { createCheckoutCode } = require('../../functions/codeConfirm.js')
+require('dotenv').config();
+
 
 const auth_router = express.Router()
 
@@ -125,8 +127,6 @@ auth_router.get("/auth/checkout",upload.none(),async (req,res)=>{
                 })
                 : (async()=>{
 
-
-
                     try {
                     let needCheckout = null;
                     let code_value = null;
@@ -160,7 +160,6 @@ auth_router.get("/auth/checkout",upload.none(),async (req,res)=>{
                     
                         }
                         else{ 
-                            console.log("nem")
                             needCheckout = true;
                             code_value = (await onCodePost(user_auth.id)).code_value
                         }
@@ -206,6 +205,77 @@ auth_router.get("/auth/checkout",upload.none(),async (req,res)=>{
 
 })
 
+auth_router.put("/auth/recovery",upload.none(),async(req,res)=>{
+
+    try {
+
+        const {token} = req.query
+        const {password} = req.body
+
+        const check_token = jsonwebtoken.verify(token,'shhhhh')
+
+        const user_put = await supabase.from("tb_user")
+        .update({
+            password:hash.generate(password)
+        })
+        .eq("id",check_token['user_id'])
+        .select("id")
+        
+        return !user_put.error
+        ? res.status(201).send({message:"Senha alterada com sucesso",status:201})
+        : res.status(500).send({message:user_put.error,status:500})
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:error,status:500})
+    }
+
+})
+
+auth_router.get("/auth/forgot",upload.none(),async(req,res)=>{
+
+    try {
+        
+        const {token} = req.query
+
+        const check_token = await supabase.from("vw_table_password_recovery")
+        .select("is_valid")
+        .eq("token_value",token) 
+        .eq("is_valid",true)
+
+        console.log(check_token)
+
+        return !!check_token.data.length
+        ? res.status(200).send({message:"Token validado com sucesso",status:200})
+        : res.status(401).send({message:"Token inválido ou expirado",status:401})
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:error,status:500})
+    }
+
+})
+
+const sendAuthRecovery = (token,email)=>{
+
+    const recovery_url = process.env.CLIENT_BASE_URL+"recovery/password/"+token;
+                
+        sendEmail(
+            "Recuperação de senha",
+            email,
+            "Clique no link para alterar sua senha.Não compartilhe com ninguém",
+            `<a href=${recovery_url}>Alterar senha</a>`,
+            {
+                onThen(result){
+                     // console.log("result",result)
+                },
+                onCatch(error){
+                    console.log("error",error)
+                }
+            }
+        )
+}
+
 auth_router.post("/auth/forgot",upload.none(),async (req,res)=>{
         try {
 
@@ -216,7 +286,38 @@ auth_router.post("/auth/forgot",upload.none(),async (req,res)=>{
             .eq("email",email)
 
             !!check_email.data.length
-            ? res.status(201).send({message:"Email verificado com sucesso",status:201})
+            ? (async()=>{
+                const recovery_data = await supabase.from("vw_table_password_recovery")
+                .select("token_value,token_is_used,is_valid")
+                .eq("user_email",check_email.data[0].email)  
+                .eq("is_valid",true)
+
+                const user_id_data = await supabase.from("tb_user")
+                .select("id")
+                .eq("email",check_email.data[0].email)
+
+                !(recovery_data.data.length)
+                ? (async()=>{
+                    const token_post = await supabase.from("tb_password_recovery")
+                    .insert({
+                        token:jsonwebtoken.sign({
+                            user_id:await user_id_data.data[0].id
+                        },"shhhhh"),
+                        fk_id_user:await user_id_data.data[0].id,
+                    })
+                    .select("token")
+
+                    let currentTokenValue = await token_post.data[0].token
+                    sendAuthRecovery(currentTokenValue,check_email.data[0].email)
+                })()
+                
+                : (async()=>{
+                    let currentTokenValue = await recovery_data.data[0].token_value
+                    sendAuthRecovery(currentTokenValue,check_email.data[0].email)
+                })()        
+
+            return res.status(201).send({message:"Email verificado com sucesso",status:201})
+            })()
             : res.status(401).send({message:"Email inválido ou inexistente",status:401})
 
         }
