@@ -237,7 +237,6 @@ publish_router.post("/publish/post",upload.single("image"),async(req,res)=>{
             quality:80
         })
         const currentFileName = "post"+Date.now();
-        const currentPath = "social-plataform-storage/post/"+currentFileName
 
         const image_upload = await supabase.storage
         .from('social-plataform-storage/post/')
@@ -246,6 +245,10 @@ publish_router.post("/publish/post",upload.single("image"),async(req,res)=>{
             upsert:false
         })
 
+        const image_path = supabase.storage
+        .from("social-plataform-storage")
+        .getPublicUrl("/post/"+currentFileName)
+
         const insert_post = await (async()=>{
 
             return !image_upload.error
@@ -253,7 +256,7 @@ publish_router.post("/publish/post",upload.single("image"),async(req,res)=>{
             .insert({
                 description:description,
                 fk_id_user:user_auth.id,
-                image:currentPath
+                image:image_path.data.publicUrl
             })
             : {error:image_upload.error}
 

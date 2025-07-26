@@ -171,6 +171,18 @@ user_router.get("/user/get/group",async (req,res)=>{
                     
                     console.log("identifier",user_identifier)
         switch (type) {
+            case "like":
+                const {post_id} = req.query
+                user_list_data = await onQueryDataList(limit_number,page_number,{
+                    name:"vw_table_like",
+                    fieldSelect:"username,namertag,image:small_profile_photo"
+                },[{
+                    column:"post_id",
+                    operator:"eq",
+                    value:post_id
+                }])
+
+                break;
             case "search":
                 const {search} = req.query
                 user_list_data = await onQueryDataList(limit_number,page_number,{

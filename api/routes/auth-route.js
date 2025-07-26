@@ -375,17 +375,29 @@ auth_router.post("/auth/login",upload.none(),async (req,res)=>{
     try{
         const {email,password} = req.body;
         
-        const database_users = await supabase
+        const check_email = await supabase
         .from("tb_user")
-        .select("email,password,id")
+        .select("password,id")
+        .eq("email",email)
 
-        const userLogged = database_users.data.find((user)=>
-            !!(user.email === email && hash.verify(password,user.password))
-        )
-        !!userLogged
+        if(!check_email.data.length){
+            return res.status(401).send({message:"Email inválido ou inexistente",status:401})
+        }
+            const check_password = hash.verify(password,check_email.data[0].password)
+        
+        if(!check_password){
+            return res.status(401).send({message:"Senha inválida",status:401})
+        }
+
+        console.log({
+            password:check_password,
+            email:check_email
+        })
+
+        return !!(!!check_password && !!check_email.data)
         ? (()=>{
             const auth_token = jsonwebtoken.sign({
-                user_id:userLogged.id
+                user_id:check_email.data[0].id
             },"shhhhh")
 
             res.cookie(
