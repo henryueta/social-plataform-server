@@ -118,7 +118,7 @@ commentary_router.get("/commentary/get",async(req,res)=>{
 
         let commentary_data = null;
         let commentary_like_data = null;
-        let commentary_count = null
+        let user_commentary_data = null;
 
         // commentary_count = supabase.from('vw_table_post_commentary')
         // .select("username",{
@@ -177,36 +177,16 @@ commentary_router.get("/commentary/get",async(req,res)=>{
                 }
             }
         ])
-
-        // commentary_data = supabase.from("vw_table_post_commentary")
-        // .select(`
-        // commentary_id,
-        // post_id,
-        // thread_id,
-        // for_respond_id,
-        // username,
-        // user_small_photo,
-        // description,
-        // like_qnt,
-        // response_quantity,
-        // creation_date_interval
-        // `)
-        // .eq(type === 'post'
-        // ? 'post_id'
-        // : 'thread_id'    
-        // ,table_id)
-        // .limit(limit)
-        
-        // if (type === 'post') {
-        // commentary_data = commentary_data.is('thread_id', null);
-        // } else {
-        // commentary_data = commentary_data.not('thread_id', 'is', null).order("creation_date",{
-        //     ascending:true
-        // });
-        // }
         
         console.log("comentario",commentary_data.data)
 
+
+        user_commentary_data = await supabase.from("vw_table_post_commentary")
+        .select("commentary_id")
+        .in("commentary_id",(commentary_data).data.map((commentary)=>{
+            return commentary.commentary_id
+        }))
+        .eq("user_id",user_auth.id);
 
         commentary_like_data = await supabase.from("tb_commentary_like")
         .select("fk_id_commentary")
@@ -262,6 +242,7 @@ commentary_router.get("/commentary/get",async(req,res)=>{
         ?
         res.status(200).send({message:"Comentários listados com sucesso",status:200,data:{
             commentary_list:(await commentary_data).data,
+            user_commentary_list:user_commentary_data.data.map((commentary)=>commentary.commentary_id),
             liked_commentary_list:(await commentary_like_data).data.map((commentary)=>commentary.fk_id_commentary),
             commentary_list_count_remaining:((await commentary_data).remaining)
         }})

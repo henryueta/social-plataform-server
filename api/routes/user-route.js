@@ -175,7 +175,7 @@ user_router.get("/user/get/group",async (req,res)=>{
                 const {post_id} = req.query
                 user_list_data = await onQueryDataList(limit_number,page_number,{
                     name:"vw_table_like",
-                    fieldSelect:"username,namertag,image:small_profile_photo"
+                    fieldSelect:"username,namertag,image:user_small_photo"
                 },[{
                     column:"post_id",
                     operator:"eq",
