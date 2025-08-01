@@ -26,7 +26,6 @@ const onCodePost = async (user_id)=>{
         })
         .select("code")
 
-        console.log(await code_post.data[0].code)
 
         return !code_post.error
         ? (async ()=>{
@@ -141,18 +140,15 @@ auth_router.get("/auth/checkout",upload.none(),async (req,res)=>{
                         )
                         
                         if(!current_code){
-                            console.log("!current_code")
                             needCheckout = false;
                         }
                     
                         else if (!current_code.is_valid){
-                            console.log('!current_code.is_valid')
                             needCheckout = true;
                             code_value = (await onCodePost(user_auth.id)).code_value;
                         }
                     
                         else if(current_code.is_valid){
-                            console.log("current_code.is_valid")
                              needCheckout = true;
                             code_value = current_code.code_value;
                         }
@@ -165,7 +161,6 @@ auth_router.get("/auth/checkout",upload.none(),async (req,res)=>{
                         }
                         
                         if(needCheckout){
-                            console.log("codigo",code_value)
                             sendEmail(
                                 "Código de verificação",
                                 user_checkout.data[0].email,
@@ -243,7 +238,6 @@ auth_router.get("/auth/forgot",upload.none(),async(req,res)=>{
         .eq("token_value",token) 
         .eq("is_valid",true)
 
-        console.log(check_token)
 
         return !!check_token.data.length
         ? res.status(200).send({message:"Token validado com sucesso",status:200})

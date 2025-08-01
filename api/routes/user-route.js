@@ -169,7 +169,6 @@ user_router.get("/user/get/group",async (req,res)=>{
                         ? username
                         : user_auth.id
                     
-                    console.log("identifier",user_identifier)
         switch (type) {
             case "like":
                 const {post_id} = req.query

@@ -27,7 +27,6 @@ commentary_router.post("/commentary/post",upload.none(),async(req,res)=>{
         .select("username")
         .eq("commentary_id",for_respond_id)
 
-            console.log("DATA",req.body)
 
             return !user_for_response.error
             ?  {
@@ -178,7 +177,6 @@ commentary_router.get("/commentary/get",async(req,res)=>{
             }
         ])
         
-        console.log("comentario",commentary_data.data)
 
 
         user_commentary_data = await supabase.from("vw_table_post_commentary")
@@ -235,19 +233,66 @@ commentary_router.get("/commentary/get",async(req,res)=>{
         // })()
         // : []
         
-
-        !(await commentary_data.error)
+        !!(commentary_data.data)
         &&
         !(await commentary_like_data.error)
         ?
         res.status(200).send({message:"Comentários listados com sucesso",status:200,data:{
-            commentary_list:(await commentary_data).data,
+            commentary_list: commentary_data.data,
             user_commentary_list:user_commentary_data.data.map((commentary)=>commentary.commentary_id),
             liked_commentary_list:(await commentary_like_data).data.map((commentary)=>commentary.fk_id_commentary),
             commentary_list_count_remaining:((await commentary_data).remaining)
         }})
         :
         res.status(500).send({message:"Erro interno no Servidor",status:500})
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:error,status:500})
+    }
+
+})
+
+commentary_router.delete("/commentary/delete",async(req,res)=>{
+
+    try {
+        
+        const {commentary_id} = req.query
+        const commentary_delete = await supabase.from("tb_commentary")
+        .update({
+            is_deleted:true
+        })
+        .eq("id",commentary_id)
+        .select("id,fk_id_post")
+
+        await supabase.from("tb_commentary")
+        .update({
+            is_deleted:true
+        })
+        .in("fk_id_response",commentary_id)
+
+        const commentary_data = await supabase.from("tb_post")
+        .select("commentary_qnt")
+        .eq("id",commentary_delete.data[0].fk_id_post)
+
+        const response_data = await supabase.from("tb_commentary")
+        .select("id",{count:'exact'})
+        .eq("fk_id_thread",commentary_delete.data[0].id)
+
+        console.log("antes",commentary_data.data[0].commentary_qnt)
+        console.log("depois",response_data.count)
+
+        const post_update = await supabase.from("tb_post")
+        .update({
+            commentary_qnt:(commentary_data.data[0].commentary_qnt-(response_data.count+1))
+        })
+        .eq("id",commentary_delete.data[0].fk_id_post)
+
+        return (!commentary_delete.error && !post_update.error)
+        ? res.status(201).send({message:"Comentário marcado como excluido com sucesso",status:201,data:{
+            commentary_id:commentary_delete.data[0].id
+        }})
+        : res.status(500).send({message:post_update.error,status:500})
 
     } catch (error) {
         console.log(error)

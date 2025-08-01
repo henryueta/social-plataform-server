@@ -228,37 +228,46 @@ publish_router.post("/publish/post",upload.single("image"),async(req,res)=>{
         if(!user_auth){
             return res.status(401).send({message:"Usuário não autenticado",status:401})
         }         
+        let current_image_value = "";
+        
+        if(!!req.file){
+            const buffer = req.file.buffer;
+            const jimpImage = await Jimp.read(buffer)
+
+            const outputBuffer = await jimpImage.getBuffer("image/jpeg",{
+                quality:80
+            })
+            const currentFileName = "post"+Date.now();
+
+            const image_upload = await supabase.storage
+            .from('social-plataform-storage/post/')
+            .upload(currentFileName,outputBuffer,{
+                contentType:"image/webp",
+                upsert:false
+            })
+
+            const image_path = supabase.storage
+            .from("social-plataform-storage")
+            .getPublicUrl("/post/"+currentFileName)
+            
+            current_image_value = image_path.data.publicUrl
+
+            !!image_upload.error
+            && res.status(500).send({message:image_upload.error,status:500})
+
+        } 
+
 
         const {description} = req.body
-        const buffer = req.file.buffer;
-        const jimpImage = await Jimp.read(buffer)
-
-        const outputBuffer = await jimpImage.getBuffer("image/jpeg",{
-            quality:80
-        })
-        const currentFileName = "post"+Date.now();
-
-        const image_upload = await supabase.storage
-        .from('social-plataform-storage/post/')
-        .upload(currentFileName,outputBuffer,{
-            contentType:"image/webp",
-            upsert:false
-        })
-
-        const image_path = supabase.storage
-        .from("social-plataform-storage")
-        .getPublicUrl("/post/"+currentFileName)
 
         const insert_post = await (async()=>{
 
-            return !image_upload.error
-            ? await supabase.from("tb_post")
+            return await supabase.from("tb_post")
             .insert({
                 description:description,
                 fk_id_user:user_auth.id,
-                image:image_path.data.publicUrl
+                image:current_image_value
             })
-            : {error:image_upload.error}
 
         })()
 
@@ -350,7 +359,6 @@ publish_router.put("/publish/put/structure",upload.none(),async (req,res)=>{
         const {post_id} = req.query
         const {description} = req.body
 
-        console.log(req.body)
 
         const post_put = await supabase.from("tb_post")
         .update({description:description})

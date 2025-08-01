@@ -189,11 +189,6 @@ like_router.get("/like/get",async(req,res)=>{
 
             })()
             : (()=>{
-                console.log("follow_list",!like_following_list.error)
-                console.log("user_list",!like_user_list.error)
-                console.log("image",!!hasImageValue)
-                console.log("semImage",!!(!like_user_list.error && !hasImageValue))
-                console.log("comImage",!!(!like_following_list.error && !!hasImageValue && !like_user_list.error))
                 return {}
             })()
 

@@ -38,7 +38,7 @@ server.get("/",(req,res)=>{
 })
 
 
-server.listen(3750,(error)=>{
+server.listen(3500,(error)=>{
     if(error){
         console.log(error)
         throw new Error(error)
