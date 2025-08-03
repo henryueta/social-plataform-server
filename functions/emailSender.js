@@ -23,11 +23,11 @@ return smtp
 }
 
 
-const sendEmail = async(from,destination,subject,html,treatment)=>{
+const sendUserEmail = async(from,destination,subject,html,treatment)=>{
 
     const email_connection = await createConnection()
     try {
-    const sendEmail = email_connection.sendMail({
+    const sendUserEmail = email_connection.sendMail({
     from:from,
     to:destination,
     subject:subject,
@@ -49,5 +49,5 @@ const sendEmail = async(from,destination,subject,html,treatment)=>{
 }
 
 module.exports = {
-    sendEmail
+    sendUserEmail
 }

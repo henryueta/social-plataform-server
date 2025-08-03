@@ -4,7 +4,7 @@ const {supabase} = require('../config/database.js')
 const hash = require('password-hash')
 const {upload} = require('../../middlewares/multer.js')
 const { readToken } = require('../../functions/token.js')
-const { sendEmail } = require('../../functions/emailSender.js')
+const { sendUserEmail } = require('../../functions/emailSender.js')
 const { createCheckoutCode } = require('../../functions/codeConfirm.js')
 require('dotenv').config();
 
@@ -115,6 +115,9 @@ auth_router.get("/auth/checkout",upload.none(),async (req,res)=>{
                 return res.status(401).send({message:"Usuário não autenticado",status:401})
             } 
 
+            const {sendEmail} = req.query
+            
+
             const user_checkout = await supabase.from("tb_user")
             .select("is_checked,email")
             .eq("id",user_auth.id)
@@ -145,12 +148,16 @@ auth_router.get("/auth/checkout",upload.none(),async (req,res)=>{
                     
                         else if (!current_code.is_valid){
                             needCheckout = true;
-                            code_value = (await onCodePost(user_auth.id)).code_value;
+                            if(sendEmail === 'true'){
+                                code_value = (await onCodePost(user_auth.id)).code_value;
+                            }
                         }
                     
                         else if(current_code.is_valid){
                              needCheckout = true;
-                            code_value = current_code.code_value;
+                             if(sendEmail === 'true'){
+                                code_value = current_code.code_value;
+                             }
                         }
 
                     
@@ -160,8 +167,8 @@ auth_router.get("/auth/checkout",upload.none(),async (req,res)=>{
                             code_value = (await onCodePost(user_auth.id)).code_value
                         }
                         
-                        if(needCheckout){
-                            sendEmail(
+                        if(needCheckout && sendEmail.toLowerCase() === "true"){
+                            sendUserEmail(
                                 "Código de verificação",
                                 user_checkout.data[0].email,
                                 "Aqui está seu código de verificação",
@@ -175,6 +182,7 @@ auth_router.get("/auth/checkout",upload.none(),async (req,res)=>{
                                     }
                                 }
                             )
+
                         }
 
                         !!needCheckout
@@ -254,7 +262,7 @@ const sendAuthRecovery = (token,email)=>{
 
     const recovery_url = process.env.CLIENT_BASE_URL+"recovery/password/"+token;
                 
-        sendEmail(
+        sendUserEmail(
             "Recuperação de senha",
             email,
             "Clique no link para alterar sua senha.Não compartilhe com ninguém",
