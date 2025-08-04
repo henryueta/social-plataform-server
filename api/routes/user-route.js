@@ -431,15 +431,12 @@ user_router.put("/user/update",upload.single('image'),async(req,res)=>{
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
         const outputBuffer = await jimpImage.getBufferAsync(jimp.MIME_JPEG)
 
-
-        const {data,error} = await supabase.storage
+        await supabase.storage
         .from('class-plataform-storage')
         .upload("teste",outputBuffer,{
             contentType:"image/webp",
             upsert:true
         })
-
-      
 
     } catch (error) {
         console.log(error)

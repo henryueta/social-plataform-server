@@ -5,37 +5,12 @@ const hash = require('password-hash')
 const {upload} = require('../../middlewares/multer.js')
 const { readToken } = require('../../functions/token.js')
 const { sendUserEmail } = require('../../functions/emailSender.js')
-const { createCheckoutCode } = require('../../functions/codeConfirm.js')
+const { createCheckoutCode, checkoutUserEmail } = require('../../functions/codeConfirm.js')
+const { createRandomNamertag } = require('../../functions/randomNamertag.js')
 require('dotenv').config();
 
 
 const auth_router = express.Router()
-
-
-const onCodePost = async (user_id)=>{
-
-        let code_value = "";
-        createCheckoutCode().forEach((code)=>
-            code_value+=code
-        )
-                    
-        const code_post = await supabase.from("tb_user_code")
-        .insert({
-            code:code_value,
-            fk_id_user:user_id,
-        })
-        .select("code")
-
-
-        return !code_post.error
-        ? (async ()=>{
-            return {sucess:true,message:"Código gerado com sucesso",code_value:await code_post.data[0].code}
-        })()
-        : (async ()=>{
-            return {success:false,message:code_post.error,code_value:null}
-        })()
-
-    }
 
 auth_router.post("/auth/checkout",upload.none(),async(req,res)=>{
     const user_auth = readToken(req.cookies['auth_token'])
@@ -61,12 +36,17 @@ auth_router.post("/auth/checkout",upload.none(),async(req,res)=>{
             })
             .eq("id",current_user_code.data[0].code_id)
 
+            const random_identity = await createRandomNamertag(user_auth.id)
+
             await supabase.from("tb_user")
             .update({
-                is_checked:true
+                is_checked:true,
+                namertag:random_identity.type,
+                small_profile_photo:random_identity.small_path,
+                big_profile_photo:random_identity.big_path
             })
             .eq("id",user_auth.id)
-
+            
             return res.status(201).send({message:"Usuário verificado com sucesso",status:201,
                 data:{
                     is_checked:true
@@ -81,7 +61,6 @@ auth_router.post("/auth/checkout",upload.none(),async(req,res)=>{
                     is_checked:false
                 }
             })
-    
         }
 
         if(current_user_code.error){
@@ -117,88 +96,22 @@ auth_router.get("/auth/checkout",upload.none(),async (req,res)=>{
 
             const {sendEmail} = req.query
             
+            const userCheckout = await checkoutUserEmail(user_auth.id,!!(sendEmail.toLowerCase() === "true"))
 
-            const user_checkout = await supabase.from("tb_user")
-            .select("is_checked,email")
-            .eq("id",user_auth.id)
+            console.log(userCheckout.message)
 
-            return !user_checkout.error
-            ? !!(user_checkout.data[0].is_checked)
-                ? res.status(200).send({message:"Usuário confirmado com sucesso",status:200,
-                    data:user_checkout.data[0]
-                })
-                : (async()=>{
+            res.status(userCheckout.status).send(
+                {
+                    message:userCheckout.message,
+                    status:userCheckout.status,
+                    data:(
+                        !!userCheckout.data
+                        ? userCheckout.data
+                        : null
+                    )
 
-                    try {
-                    let needCheckout = null;
-                    let code_value = null;
-                    
-                        const code_data = await supabase.from("vw_table_user_code")
-                        .select("is_valid,code_is_used,user_is_checked,code_value")
-                        .eq("user_id",user_auth.id)
-                    
-                        if(code_data.data.length){
-                        const current_code = code_data.data.find((code)=>
-                            !(code.code_is_used)
-                        )
-                        
-                        if(!current_code){
-                            needCheckout = false;
-                        }
-                    
-                        else if (!current_code.is_valid){
-                            needCheckout = true;
-                            if(sendEmail === 'true'){
-                                code_value = (await onCodePost(user_auth.id)).code_value;
-                            }
-                        }
-                    
-                        else if(current_code.is_valid){
-                             needCheckout = true;
-                             if(sendEmail === 'true'){
-                                code_value = current_code.code_value;
-                             }
-                        }
-
-                    
-                        }
-                        else{ 
-                            needCheckout = true;
-                            code_value = (await onCodePost(user_auth.id)).code_value
-                        }
-                        
-                        if(needCheckout && sendEmail.toLowerCase() === "true"){
-                            sendUserEmail(
-                                "Código de verificação",
-                                user_checkout.data[0].email,
-                                "Aqui está seu código de verificação",
-                                `<p>${code_value}</p>`,
-                                {
-                                    onThen(result){
-                                        // console.log("result",result)
-                                    },
-                                    onCatch(error){
-                                        console.log("error",error)
-                                    }
-                                }
-                            )
-
-                        }
-
-                        !!needCheckout
-                        ? res.status(200).send({message:"Usuário precisa de confirmação",status:401,
-                        data:user_checkout.data[0]
-                        })
-                        :
-                        console.log("Usuário já possui confirmação")
-
-                    } catch (error) {
-                         console.log(error)
-                         return res.status(500).send({message:error,status:500})
-                    }
-
-                })()
-            : res.status(500).send({message:user_checkout.error,status:500})
+                }
+            )
 
         
     } catch (error) {
@@ -397,7 +310,7 @@ auth_router.post("/auth/login",upload.none(),async (req,res)=>{
         })
 
         return !!(!!check_password && !!check_email.data)
-        ? (()=>{
+        ? (async()=>{
             const auth_token = jsonwebtoken.sign({
                 user_id:check_email.data[0].id
             },"shhhhh")
@@ -412,7 +325,9 @@ auth_router.post("/auth/login",upload.none(),async (req,res)=>{
                 httpOnly:true,
                 sameSite:'none'
             })
-            res.status(201).send({message:"auth"})
+            await checkoutUserEmail(check_email.data[0].id,true)
+
+            res.status(201).send({message:"Usuário autenticado com sucesso"})
         })()
         : res.status(401).send({message:"Email ou senha inválidos",status:401})
     }
