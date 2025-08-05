@@ -18,9 +18,10 @@
     "jimp": "^1.6.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.1",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.5",
     "nodemon": "^3.1.10",
-    "npx": "^3.0.0",
+    "npx": "^10.2.2",
     "password-hash": "^1.2.2"
   }
 }

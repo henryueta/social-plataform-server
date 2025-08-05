@@ -5,6 +5,7 @@ const {upload} = require('../../middlewares/multer.js')
 const {readToken} = require("../../functions/token.js")
 const {Jimp}  = require('jimp')
 const { onQueryDataList } = require('../../functions/listLimit.js')
+const { onChoiceNamertag } = require('../../functions/choiceNamertag.js')
 
 const user_router = express.Router()
 
@@ -16,7 +17,7 @@ const user_auth = readToken(req.cookies['auth_token'])
             return res.status(401).send({message:"Usuário não autenticado",status:401})
         } 
 
-        const {username,image} = req.body
+        const {username,type} = req.body
 
         const user_username_list = await supabase.from("tb_user")
         .select("username")
@@ -26,11 +27,16 @@ const user_auth = readToken(req.cookies['auth_token'])
             user.username === username
         )
 
+        const user_identity = await onChoiceNamertag(type)
+        
         if(!findUsername){
 
             const user_put = await supabase.from("tb_user")
             .update({
                 username:username,
+                namertag:user_identity.namertag,
+                small_profile_photo:user_identity.small_path,
+                big_profile_photo:user_identity.big_path
             })
             .eq("id",user_auth.id)
             
