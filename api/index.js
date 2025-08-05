@@ -14,7 +14,7 @@ const server = express();
 
 server.use(cors({
     credentials:true, 
-    origin:"http://localhost:5173"
+    origin:"https://yokurt.vercel.app"
 }))
 server.use(express.json())
 server.use(cookieParser())
