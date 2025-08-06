@@ -16,6 +16,7 @@ server.use(cors({
     credentials:true, 
     origin:"https://yokurt.vercel.app"
 }))
+
 server.use(express.json())
 server.use(cookieParser())
 server.use(user_router)

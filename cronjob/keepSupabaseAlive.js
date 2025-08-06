@@ -21,7 +21,7 @@ const onPingDatabase = async ()=>{
 }
 
 const onPingCronJob = ()=>{
-    cron.schedule('0 */5 * * *',()=>{
+    cron.schedule('0 */10 * * *',()=>{
         onPingDatabase()
     })
 }

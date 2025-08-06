@@ -119,21 +119,6 @@ commentary_router.get("/commentary/get",async(req,res)=>{
         let commentary_like_data = null;
         let user_commentary_data = null;
 
-        // commentary_count = supabase.from('vw_table_post_commentary')
-        // .select("username",{
-        //     count:'exact'
-        // })
-        // .eq(type === 'post'
-        // ? 'post_id'
-        // : 'for_respond_id',
-        // table_id)
-        
-        // if (type === 'post') {
-        // commentary_count = commentary_count.is('thread_id', null);
-        // } else {
-        // commentary_count = commentary_count.not('thread_id', 'is', null);
-        // }
-
         commentary_data = await onQueryDataList(
         limit_number,
         page_number,
@@ -192,46 +177,6 @@ commentary_router.get("/commentary/get",async(req,res)=>{
                         return commentary.commentary_id
         }))
         .eq("fk_id_user",user_auth.id)
-
-        // commentary_like_data = await onQueryDataList(
-        //     limit_number,
-        //     page_number,
-        //     {
-        //         name:"tb_commentary_like",
-        //         fieldSelect:"fk_id_commentary"
-        //     },
-        //     [
-        //         {
-        //             column:"fk_id_commentary",
-        //             operator:"in",
-        //             value:(await commentary_data).data.map((commentary)=>{
-        //                 return commentary.commentary_id
-        //             })
-        //         },
-        //         {
-        //             column:'fk_id_user',
-        //             operator:"eq",
-        //             value:user_auth.id
-        //         }
-        //     ]
-        // )
-
-        // commentary_like_data = 
-        // !(await commentary_data.error)
-        // ?
-        // (async()=>{
-        //     const commentary_user_like = await supabase.from("tb_commentary_like")
-        // .select("fk_id_commentary")
-        // .in('fk_id_commentary',(await commentary_data).data.map((commentary)=>commentary.commentary_id))
-        // .eq("fk_id_user",user_auth.id)
-        // .limit(limit)
-
-        //     return !commentary_user_like.error
-        //     &&
-        //     commentary_user_like.data.map((commentary)=>commentary.fk_id_commentary)
-
-        // })()
-        // : []
         
         !!(commentary_data.data)
         &&
