@@ -193,11 +193,18 @@ user_router.get("/user/get/group",async (req,res)=>{
                 user_list_data = await onQueryDataList(limit_number,page_number,{
                     name:"tb_user",
                     fieldSelect:"username,namertag,image:small_profile_photo"
-                },[{
-                    column:"username",
-                    operator:"ilike",
-                    value:search+"%"
-                }])
+                },[
+                    {
+                        column:"username",
+                        operator:"ilike",
+                        value:search+"%"
+                    },
+                    {
+                        column:"is_checked",
+                        operator:"eq",
+                        value:true
+                    }
+                ])
                 break;
             case "following":
                 user_list_data = await onQueryDataList(limit_number,page_number,{
