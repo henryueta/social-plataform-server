@@ -323,7 +323,8 @@ auth_router.post("/auth/login",upload.none(),async (req,res)=>{
             {
                 secure:true,
                 httpOnly:true,
-                sameSite:'none'
+                sameSite:'none',
+                path:"/"
             })
             await checkoutUserEmail(check_email.data[0].id,true)
 
