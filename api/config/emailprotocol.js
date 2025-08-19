@@ -1,4 +1,3 @@
-require('dotenv').config()
 const nodemailer = require('nodemailer')
 const {supabase} = require('../config/database')
 
